@@ -109,7 +109,6 @@
 
   <button onclick="resetData()" style="margin-top: 2rem; background: #e74c3c; color: white;">Reset All Data</button>
 
-  <!-- Firebase Setup -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDlWyrR4NE3UHyAWq9gQIRZ_EzLMeszQq4",
@@ -120,12 +119,9 @@
       messagingSenderId: "759723852292",
       appId: "1:759723852292:web:3545f5b1137a6c1e4a2b51"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-  </script>
-
-  <!-- App Logic -->
-  <script>
     let choreData = [];
 
     function loadChores() {
@@ -290,7 +286,7 @@
       }
     }
 
-    loadChores();
+    window.onload = loadChores;
   </script>
 </body>
 </html>
