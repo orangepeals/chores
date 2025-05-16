@@ -197,14 +197,28 @@
     }
 
     function deleteEntry(index) {
-      choreData.splice(index, 1);
-      saveChores();
+      const entered = prompt("Enter passcode to delete this chore:");
+      const correctPasscode = "0206";
+      if (entered === correctPasscode) {
+        choreData.splice(index, 1);
+        saveChores();
+        alert("Chore deleted.");
+      } else if (entered !== null) {
+        alert("Incorrect passcode. Chore not deleted.");
+      }
     }
 
     function resetData() {
-      if (confirm("Are you sure you want to clear all data?")) {
-        choreData = [];
-        db.ref("chores").remove();
+      const entered = prompt("Enter passcode to erase all data:");
+      const correctPasscode = "0206";
+      if (entered === correctPasscode) {
+        if (confirm("Are you sure you want to clear all chore data?")) {
+          choreData = [];
+          db.ref("chores").remove();
+          alert("All data erased.");
+        }
+      } else if (entered !== null) {
+        alert("Incorrect passcode. Data not erased.");
       }
     }
 
