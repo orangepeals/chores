@@ -4,8 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chore Tracker</title>
+
+  <!-- Chart.js for graphs -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Firebase App and Realtime Database SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
   <style>
+    /* (Same CSS as before — trimmed for brevity) */
     body {
       font-family: Arial, sans-serif;
       padding: 2rem;
@@ -14,59 +22,19 @@
       max-width: 700px;
       margin: auto;
     }
-    h1, h2 {
-      color: #007acc;
-    }
-    label {
-      display: block;
-      margin-top: 1rem;
-    }
-    input, select, button {
-      padding: 0.5rem;
-      margin-top: 0.5rem;
-      width: 100%;
-    }
-    table {
-      margin-top: 2rem;
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 0.5rem;
-      border-bottom: 1px solid #ccc;
-    }
-    .points {
-      font-weight: bold;
-      color: #2c3e50;
-    }
-    .message {
-      margin-top: 1rem;
-      font-size: 1.2rem;
-      color: #28a745;
-      animation: pop 0.5s ease-out;
-    }
-    @keyframes pop {
-      0% { transform: scale(0.5); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .confetti {
-      position: fixed;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 10px;
-      height: 10px;
-      background: #ff0;
-      animation: fall 1s ease-out forwards;
-    }
-    @keyframes fall {
-      0% { transform: translateY(0) rotate(0); }
-      100% { transform: translateY(300px) rotate(360deg); opacity: 0; }
-    }
+    h1, h2 { color: #007acc; }
+    input, select, button { padding: 0.5rem; margin-top: 0.5rem; width: 100%; }
+    table { margin-top: 2rem; width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.5rem; border-bottom: 1px solid #ccc; }
+    .points { font-weight: bold; color: #2c3e50; }
+    .message { font-size: 1.2rem; color: #28a745; animation: pop 0.5s ease-out; }
+    .confetti { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 10px; height: 10px; background: #ff0; animation: fall 1s ease-out forwards; }
+    @keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes fall { 0% { transform: translateY(0) rotate(0); } 100% { transform: translateY(300px) rotate(360deg); opacity: 0; } }
   </style>
 </head>
 <body>
-  <h1>Chhabra Chore Tracker</h1>
+  <h1>Chore Tracker</h1>
 
   <label for="kid">Who did the chore?</label>
   <select id="kid">
@@ -107,8 +75,35 @@
 
   <button onclick="resetData()" style="margin-top: 2rem; background: #e74c3c; color: white;">Reset All Data</button>
 
+  <!-- Firebase Setup -->
   <script>
-    let choreData = JSON.parse(localStorage.getItem("choreData")) || [];
+    const firebaseConfig = {
+      apiKey: "AIzaSyDlWyrR4NE3UHyAWq9gQIRZ_EzLMeszQq4",
+      authDomain: "choretracker-eac05.firebaseapp.com",
+      databaseURL: "https://choretracker-eac05-default-rtdb.firebaseio.com",
+      projectId: "choretracker-eac05",
+      storageBucket: "choretracker-eac05.appspot.com",
+      messagingSenderId: "759723852292",
+      appId: "1:759723852292:web:3545f5b1137a6c1e4a2b51"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
+
+  <!-- Chore App Logic -->
+  <script>
+    let choreData = [];
+
+    function loadChores() {
+      db.ref("chores").on("value", snapshot => {
+        choreData = snapshot.val() || [];
+        render();
+      });
+    }
+
+    function saveChores() {
+      db.ref("chores").set(choreData);
+    }
 
     function addChore() {
       const kid = document.getElementById("kid").value;
@@ -121,16 +116,14 @@
         return;
       }
 
-      const entry = { kid, chore, points, time };
-      choreData.push(entry);
-      localStorage.setItem("choreData", JSON.stringify(choreData));
+      choreData.push({ kid, chore, points, time });
+      saveChores();
 
       document.getElementById("chore").value = "";
       document.getElementById("points").value = "";
 
       showReward();
       throwConfetti();
-      render();
     }
 
     function render() {
@@ -157,7 +150,6 @@
 
       document.getElementById("jaydenTotal").textContent = jaydenPoints;
       document.getElementById("giaTotal").textContent = giaPoints;
-
       updateChart();
     }
 
@@ -170,93 +162,79 @@
       } else {
         choreData[index][field] = value;
       }
-      localStorage.setItem("choreData", JSON.stringify(choreData));
-      render();
+      saveChores();
     }
 
     function deleteEntry(index) {
       choreData.splice(index, 1);
-      localStorage.setItem("choreData", JSON.stringify(choreData));
-      render();
+      saveChores();
     }
 
     function resetData() {
-      if (confirm("Are you sure you want to clear all chore data?")) {
+      if (confirm("Are you sure you want to clear all data?")) {
         choreData = [];
-        localStorage.removeItem("choreData");
-        render();
+        db.ref("chores").remove();
       }
     }
 
     function showReward() {
-      const messages = [
-        "🎉 Great job!",
-        "🌟 Keep it up!",
-        "👏 Awesome work!",
-        "💪 You’re amazing!",
-        "🏆 Chore champion!"
-      ];
-      const message = messages[Math.floor(Math.random() * messages.length)];
+      const messages = ["🎉 Great job!", "👏 Nice one!", "🌟 Superstar!", "💪 You rock!"];
       const reward = document.getElementById("rewardMessage");
-      reward.textContent = message;
-      setTimeout(() => (reward.textContent = ""), 2000);
+      reward.textContent = messages[Math.floor(Math.random() * messages.length)];
+      setTimeout(() => reward.textContent = "", 2000);
     }
 
     function throwConfetti() {
       for (let i = 0; i < 10; i++) {
-        const confetti = document.createElement("div");
-        confetti.className = "confetti";
-        confetti.style.left = Math.random() * 100 + "vw";
-        confetti.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
-        document.body.appendChild(confetti);
-        setTimeout(() => confetti.remove(), 1000);
+        const c = document.createElement("div");
+        c.className = "confetti";
+        c.style.left = Math.random() * 100 + "vw";
+        c.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 1000);
       }
     }
 
     function updateChart() {
-      const chartCanvas = document.getElementById("choreChart");
-      if (!chartCanvas) return;
+      const canvas = document.getElementById("choreChart");
+      if (!canvas) return;
 
-      const dailyCounts = {};
+      const dayCounts = {};
       choreData.forEach(entry => {
         const day = new Date(entry.time).toLocaleDateString();
-        dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+        dayCounts[day] = (dayCounts[day] || 0) + 1;
       });
 
-      const sortedDates = Object.keys(dailyCounts).sort((a, b) => new Date(a) - new Date(b));
-      const counts = sortedDates.map(date => dailyCounts[date]);
+      const labels = Object.keys(dayCounts).sort((a, b) => new Date(a) - new Date(b));
+      const data = labels.map(label => dayCounts[label]);
 
       if (window.choreChartInstance) {
-        window.choreChartInstance.data.labels = sortedDates;
-        window.choreChartInstance.data.datasets[0].data = counts;
+        window.choreChartInstance.data.labels = labels;
+        window.choreChartInstance.data.datasets[0].data = data;
         window.choreChartInstance.update();
       } else {
-        window.choreChartInstance = new Chart(chartCanvas, {
+        window.choreChartInstance = new Chart(canvas, {
           type: "line",
           data: {
-            labels: sortedDates,
+            labels,
             datasets: [{
               label: "Chores Completed",
-              data: counts,
+              data,
               fill: false,
               borderColor: "#007acc",
               tension: 0.2
             }]
           },
           options: {
-            responsive: true,
             scales: {
-              y: {
-                beginAtZero: true,
-                ticks: { precision: 0 }
-              }
+              y: { beginAtZero: true }
             }
           }
         });
       }
     }
 
-    render();
+    loadChores();
   </script>
 </body>
 </html>
