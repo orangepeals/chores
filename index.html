@@ -3,38 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chore Tracker</title>
+  <title>Chhabra Crazy Cool Chore Tracker</title>
 
-  <!-- Chart.js for graphs -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- Firebase App and Realtime Database SDK -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <style>
-    /* (Same CSS as before — trimmed for brevity) */
     body {
       font-family: Arial, sans-serif;
       padding: 2rem;
       background-color: #f0f8ff;
       color: #333;
-      max-width: 700px;
+      max-width: 750px;
       margin: auto;
     }
-    h1, h2 { color: #007acc; }
-    input, select, button { padding: 0.5rem; margin-top: 0.5rem; width: 100%; }
-    table { margin-top: 2rem; width: 100%; border-collapse: collapse; }
-    th, td { padding: 0.5rem; border-bottom: 1px solid #ccc; }
-    .points { font-weight: bold; color: #2c3e50; }
-    .message { font-size: 1.2rem; color: #28a745; animation: pop 0.5s ease-out; }
-    .confetti { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 10px; height: 10px; background: #ff0; animation: fall 1s ease-out forwards; }
-    @keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-    @keyframes fall { 0% { transform: translateY(0) rotate(0); } 100% { transform: translateY(300px) rotate(360deg); opacity: 0; } }
+    h1, h2 {
+      color: #007acc;
+    }
+    input, select, button {
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      width: 100%;
+    }
+    table {
+      margin-top: 2rem;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 0.5rem;
+      border-bottom: 1px solid #ccc;
+    }
+    .points {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .message {
+      font-size: 1.2rem;
+      color: #28a745;
+      animation: pop 0.5s ease-out;
+    }
+    .confetti {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 10px;
+      height: 10px;
+      background: #ff0;
+      animation: fall 1s ease-out forwards;
+    }
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes fall {
+      0% { transform: translateY(0) rotate(0); }
+      100% { transform: translateY(300px) rotate(360deg); opacity: 0; }
+    }
   </style>
 </head>
 <body>
-  <h1>Chore Tracker</h1>
+  <h1>Chhabra Crazy Cool Chore Tracker</h1>
 
   <label for="kid">Who did the chore?</label>
   <select id="kid">
@@ -56,7 +90,7 @@
   <table id="log">
     <thead>
       <tr>
-        <th>Child</th>
+        <th>Person</th>
         <th>Chore</th>
         <th>Points</th>
         <th>Time</th>
@@ -70,7 +104,7 @@
   <p>Jayden: <span class="points" id="jaydenTotal">0</span></p>
   <p>Gia: <span class="points" id="giaTotal">0</span></p>
 
-  <h2>Chores Over Time</h2>
+  <h2>Total Points Over Time</h2>
   <canvas id="choreChart" width="600" height="300"></canvas>
 
   <button onclick="resetData()" style="margin-top: 2rem; background: #e74c3c; color: white;">Reset All Data</button>
@@ -90,7 +124,7 @@
     const db = firebase.database();
   </script>
 
-  <!-- Chore App Logic -->
+  <!-- App Logic -->
   <script>
     let choreData = [];
 
@@ -150,6 +184,7 @@
 
       document.getElementById("jaydenTotal").textContent = jaydenPoints;
       document.getElementById("giaTotal").textContent = giaPoints;
+
       updateChart();
     }
 
@@ -199,35 +234,56 @@
       const canvas = document.getElementById("choreChart");
       if (!canvas) return;
 
-      const dayCounts = {};
+      const totals = { Jayden: {}, Gia: {} };
+
       choreData.forEach(entry => {
         const day = new Date(entry.time).toLocaleDateString();
-        dayCounts[day] = (dayCounts[day] || 0) + 1;
+        if (!totals[entry.kid][day]) {
+          totals[entry.kid][day] = 0;
+        }
+        totals[entry.kid][day] += Number(entry.points);
       });
 
-      const labels = Object.keys(dayCounts).sort((a, b) => new Date(a) - new Date(b));
-      const data = labels.map(label => dayCounts[label]);
+      const allDates = Array.from(new Set(Object.values(totals).flatMap(t => Object.keys(t))))
+        .sort((a, b) => new Date(a) - new Date(b));
+
+      const jaydenData = allDates.map(date => totals.Jayden[date] || 0);
+      const giaData = allDates.map(date => totals.Gia[date] || 0);
 
       if (window.choreChartInstance) {
-        window.choreChartInstance.data.labels = labels;
-        window.choreChartInstance.data.datasets[0].data = data;
-        window.choreChartInstance.update();
+        choreChartInstance.data.labels = allDates;
+        choreChartInstance.data.datasets[0].data = jaydenData;
+        choreChartInstance.data.datasets[1].data = giaData;
+        choreChartInstance.update();
       } else {
         window.choreChartInstance = new Chart(canvas, {
           type: "line",
           data: {
-            labels,
-            datasets: [{
-              label: "Chores Completed",
-              data,
-              fill: false,
-              borderColor: "#007acc",
-              tension: 0.2
-            }]
+            labels: allDates,
+            datasets: [
+              {
+                label: "Jayden",
+                data: jaydenData,
+                borderColor: "#007acc",
+                fill: false,
+                tension: 0.2
+              },
+              {
+                label: "Gia",
+                data: giaData,
+                borderColor: "#e91e63",
+                fill: false,
+                tension: 0.2
+              }
+            ]
           },
           options: {
+            responsive: true,
             scales: {
-              y: { beginAtZero: true }
+              y: {
+                beginAtZero: true,
+                ticks: { precision: 0 }
+              }
             }
           }
         });
