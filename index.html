@@ -3,117 +3,215 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Pong Game</title>
+  <title>Chore Tracker</title>
   <style>
     body {
-      margin: 0;
-      background: #111;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background-color: #f0f8ff;
+      color: #333;
+      max-width: 700px;
+      margin: auto;
     }
-    h1 {
-      margin: 1rem;
-      color: #00ffcc;
+    h1, h2 {
+      color: #007acc;
     }
-    canvas {
-      background: #222;
+    label {
       display: block;
-      margin: 1rem auto;
-      border: 4px solid #00ffcc;
+      margin-top: 1rem;
+    }
+    input, select, button {
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      width: 100%;
+    }
+    table {
+      margin-top: 2rem;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 0.5rem;
+      border-bottom: 1px solid #ccc;
+    }
+    .points {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .message {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      color: #28a745;
+      animation: pop 0.5s ease-out;
+    }
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .confetti {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 10px;
+      height: 10px;
+      background: #ff0;
+      animation: fall 1s ease-out forwards;
+    }
+    @keyframes fall {
+      0% { transform: translateY(0) rotate(0); }
+      100% { transform: translateY(300px) rotate(360deg); opacity: 0; }
     }
   </style>
 </head>
 <body>
-  <h1>Pong Game</h1>
-  <canvas id="gameCanvas" width="600" height="400"></canvas>
+  <h1>Chore Tracker</h1>
+
+  <label for="kid">Who did the chore?</label>
+  <select id="kid">
+    <option value="Jayden">Jayden</option>
+    <option value="Gia">Gia</option>
+  </select>
+
+  <label for="chore">What was the chore?</label>
+  <input type="text" id="chore" placeholder="e.g., Took out trash" />
+
+  <label for="points">How many points?</label>
+  <input type="number" id="points" placeholder="e.g., 5" />
+
+  <button onclick="addChore()">Add Chore</button>
+
+  <div class="message" id="rewardMessage"></div>
+
+  <h2>Chore History</h2>
+  <table id="log">
+    <thead>
+      <tr>
+        <th>Child</th>
+        <th>Chore</th>
+        <th>Points</th>
+        <th>Time</th>
+        <th>Edit</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Point Totals</h2>
+  <p>Jayden: <span class="points" id="jaydenTotal">0</span></p>
+  <p>Gia: <span class="points" id="giaTotal">0</span></p>
+
+  <button onclick="resetData()" style="margin-top: 2rem; background: #e74c3c; color: white;">Reset All Data</button>
+
   <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+    let choreData = JSON.parse(localStorage.getItem("choreData")) || [];
 
-    const paddleHeight = 80, paddleWidth = 10;
-    let playerY = 160, aiY = 160;
-    const ballSize = 10;
-    let ballX = canvas.width / 2, ballY = canvas.height / 2;
-    let ballSpeedX = 4, ballSpeedY = 4;
+    function addChore() {
+      const kid = document.getElementById("kid").value;
+      const chore = document.getElementById("chore").value.trim();
+      const points = parseInt(document.getElementById("points").value);
+      const time = new Date().toLocaleString();
 
-    function drawRect(x, y, w, h, color) {
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, w, h);
+      if (!chore || isNaN(points)) {
+        alert("Please enter a valid chore and point value.");
+        return;
+      }
+
+      const entry = { kid, chore, points, time };
+      choreData.push(entry);
+      localStorage.setItem("choreData", JSON.stringify(choreData));
+
+      document.getElementById("chore").value = "";
+      document.getElementById("points").value = "";
+
+      showReward();
+      throwConfetti();
+      render();
     }
 
-    function drawCircle(x, y, r, color) {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
+    function render() {
+      const tbody = document.querySelector("#log tbody");
+      tbody.innerHTML = "";
+
+      let jaydenPoints = 0;
+      let giaPoints = 0;
+
+      choreData.forEach((entry, index) => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${entry.kid}</td>
+          <td contenteditable="true" onblur="editEntry(${index}, 'chore', this.innerText)">${entry.chore}</td>
+          <td contenteditable="true" onblur="editEntry(${index}, 'points', this.innerText)">${entry.points}</td>
+          <td>${entry.time}</td>
+          <td><button onclick="deleteEntry(${index})">❌</button></td>
+        `;
+
+        tbody.appendChild(row);
+
+        if (entry.kid === "Jayden") jaydenPoints += Number(entry.points);
+        if (entry.kid === "Gia") giaPoints += Number(entry.points);
+      });
+
+      document.getElementById("jaydenTotal").textContent = jaydenPoints;
+      document.getElementById("giaTotal").textContent = giaPoints;
     }
 
-    function drawNet() {
-      for (let i = 0; i < canvas.height; i += 20) {
-        drawRect(canvas.width / 2 - 1, i, 2, 10, "#00ffcc");
+    function editEntry(index, field, value) {
+      if (field === "points") {
+        const points = parseInt(value);
+        if (!isNaN(points)) {
+          choreData[index][field] = points;
+        }
+      } else {
+        choreData[index][field] = value;
+      }
+      localStorage.setItem("choreData", JSON.stringify(choreData));
+      render();
+    }
+
+    function deleteEntry(index) {
+      choreData.splice(index, 1);
+      localStorage.setItem("choreData", JSON.stringify(choreData));
+      render();
+    }
+
+    function resetData() {
+      if (confirm("Are you sure you want to clear all chore data?")) {
+        choreData = [];
+        localStorage.removeItem("choreData");
+        render();
       }
     }
 
-    function resetBall() {
-      ballX = canvas.width / 2;
-      ballY = canvas.height / 2;
-      ballSpeedX = -ballSpeedX;
-      ballSpeedY = 4 * (Math.random() > 0.5 ? 1 : -1);
+    function showReward() {
+      const messages = [
+        "🎉 Great job!",
+        "🌟 Keep it up!",
+        "👏 Awesome work!",
+        "💪 You’re amazing!",
+        "🏆 Chore champion!"
+      ];
+      const message = messages[Math.floor(Math.random() * messages.length)];
+      const reward = document.getElementById("rewardMessage");
+      reward.textContent = message;
+      setTimeout(() => (reward.textContent = ""), 2000);
     }
 
-    function gameLoop() {
-      // Move ball
-      ballX += ballSpeedX;
-      ballY += ballSpeedY;
-
-      // Bounce off top/bottom
-      if (ballY < 0 || ballY > canvas.height) ballSpeedY = -ballSpeedY;
-
-      // Left paddle collision
-      if (
-        ballX < 20 &&
-        ballY > playerY &&
-        ballY < playerY + paddleHeight
-      ) {
-        ballSpeedX = -ballSpeedX;
+    function throwConfetti() {
+      for (let i = 0; i < 10; i++) {
+        const confetti = document.createElement("div");
+        confetti.className = "confetti";
+        confetti.style.left = Math.random() * 100 + "vw";
+        confetti.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 1000);
       }
-
-      // Right paddle collision
-      if (
-        ballX > canvas.width - 20 &&
-        ballY > aiY &&
-        ballY < aiY + paddleHeight
-      ) {
-        ballSpeedX = -ballSpeedX;
-      }
-
-      // Score
-      if (ballX < 0 || ballX > canvas.width) resetBall();
-
-      // Move AI
-      const aiCenter = aiY + paddleHeight / 2;
-      if (aiCenter < ballY - 10) aiY += 4;
-      else if (aiCenter > ballY + 10) aiY -= 4;
-
-      // Clear and redraw
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawNet();
-      drawRect(10, playerY, paddleWidth, paddleHeight, "#00ffcc");
-      drawRect(canvas.width - 20, aiY, paddleWidth, paddleHeight, "#ff3377");
-      drawCircle(ballX, ballY, ballSize, "#ffffff");
     }
 
-    // Move player paddle with mouse
-    canvas.addEventListener("mousemove", (e) => {
-      const rect = canvas.getBoundingClientRect();
-      playerY = e.clientY - rect.top - paddleHeight / 2;
-    });
-
-    setInterval(gameLoop, 1000 / 60); // 60 FPS
+    render();
   </script>
 </body>
 </html>
+
 
