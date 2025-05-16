@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chhabra Chore Tracker</title>
+  <title>Chore Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -65,7 +66,7 @@
   </style>
 </head>
 <body>
-  <h1>Chore Tracker</h1>
+  <h1>Chhabra Chore Tracker</h1>
 
   <label for="kid">Who did the chore?</label>
   <select id="kid">
@@ -87,7 +88,7 @@
   <table id="log">
     <thead>
       <tr>
-        <th>Person</th>
+        <th>Child</th>
         <th>Chore</th>
         <th>Points</th>
         <th>Time</th>
@@ -100,6 +101,9 @@
   <h2>Point Totals</h2>
   <p>Jayden: <span class="points" id="jaydenTotal">0</span></p>
   <p>Gia: <span class="points" id="giaTotal">0</span></p>
+
+  <h2>Chores Over Time</h2>
+  <canvas id="choreChart" width="600" height="300"></canvas>
 
   <button onclick="resetData()" style="margin-top: 2rem; background: #e74c3c; color: white;">Reset All Data</button>
 
@@ -138,7 +142,6 @@
 
       choreData.forEach((entry, index) => {
         const row = document.createElement("tr");
-
         row.innerHTML = `
           <td>${entry.kid}</td>
           <td contenteditable="true" onblur="editEntry(${index}, 'chore', this.innerText)">${entry.chore}</td>
@@ -146,7 +149,6 @@
           <td>${entry.time}</td>
           <td><button onclick="deleteEntry(${index})">❌</button></td>
         `;
-
         tbody.appendChild(row);
 
         if (entry.kid === "Jayden") jaydenPoints += Number(entry.points);
@@ -155,6 +157,8 @@
 
       document.getElementById("jaydenTotal").textContent = jaydenPoints;
       document.getElementById("giaTotal").textContent = giaPoints;
+
+      updateChart();
     }
 
     function editEntry(index, field, value) {
@@ -209,9 +213,50 @@
       }
     }
 
+    function updateChart() {
+      const chartCanvas = document.getElementById("choreChart");
+      if (!chartCanvas) return;
+
+      const dailyCounts = {};
+      choreData.forEach(entry => {
+        const day = new Date(entry.time).toLocaleDateString();
+        dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+      });
+
+      const sortedDates = Object.keys(dailyCounts).sort((a, b) => new Date(a) - new Date(b));
+      const counts = sortedDates.map(date => dailyCounts[date]);
+
+      if (window.choreChartInstance) {
+        window.choreChartInstance.data.labels = sortedDates;
+        window.choreChartInstance.data.datasets[0].data = counts;
+        window.choreChartInstance.update();
+      } else {
+        window.choreChartInstance = new Chart(chartCanvas, {
+          type: "line",
+          data: {
+            labels: sortedDates,
+            datasets: [{
+              label: "Chores Completed",
+              data: counts,
+              fill: false,
+              borderColor: "#007acc",
+              tension: 0.2
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { precision: 0 }
+              }
+            }
+          }
+        });
+      }
+    }
+
     render();
   </script>
 </body>
 </html>
-
-
