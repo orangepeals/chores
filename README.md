@@ -1,2 +1,2 @@
-# games
-games
+# chores
+chores
