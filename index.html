@@ -257,8 +257,17 @@
       const allDates = Array.from(new Set(Object.values(totals).flatMap(t => Object.keys(t))))
         .sort((a, b) => new Date(a) - new Date(b));
 
-      const jaydenData = allDates.map(date => totals.Jayden[date] || 0);
-      const giaData = allDates.map(date => totals.Gia[date] || 0);
+      let jaydenRunningTotal = 0;
+      let giaRunningTotal = 0;
+      const jaydenData = [];
+      const giaData = [];
+
+      allDates.forEach(date => {
+        jaydenRunningTotal += totals.Jayden[date] || 0;
+        giaRunningTotal += totals.Gia[date] || 0;
+        jaydenData.push(jaydenRunningTotal);
+        giaData.push(giaRunningTotal);
+      });
 
       if (window.choreChartInstance) {
         choreChartInstance.data.labels = allDates;
