@@ -136,6 +136,219 @@
   <button onclick="resetData()" style="margin-top: 2rem; background: #e74c3c; color: white;">Reset All Data</button>
 
   <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDlWyrR4NE3UHyAWq9gQIRZ_EzLMeszQq4",
+      authDomain: "choretracker-eac05.firebaseapp.com",
+      databaseURL: "https://choretracker-eac05-default-rtdb.firebaseio.com",
+      projectId: "choretracker-eac05",
+      storageBucket: "choretracker-eac05.appspot.com",
+      messagingSenderId: "759723852292",
+      appId: "1:759723852292:web:3545f5b1137a6c1e4a2b51"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let choreData = [];
+
+    function loadChores() {
+      db.ref("chores").on("value", snapshot => {
+        choreData = snapshot.val() || [];
+        render();
+      });
+    }
+
+    function render() {
+      const tbody = document.querySelector("#log tbody");
+      const historyTbody = document.querySelector("#historyLog tbody");
+      tbody.innerHTML = "";
+      historyTbody.innerHTML = "";
+
+      let jaydenPoints = 0;
+      let giaPoints = 0;
+
+      choreData.forEach((entry, index) => {
+        if (entry.kid === "Jayden") jaydenPoints += Number(entry.points);
+        if (entry.kid === "Gia") giaPoints += Number(entry.points);
+      });
+
+      document.getElementById("jaydenTotal").textContent = jaydenPoints;
+      document.getElementById("giaTotal").textContent = giaPoints;
+
+      const last15 = choreData.slice(-15);
+      const older = choreData.slice(0, -15);
+
+      last15.forEach((entry, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${entry.kid}</td>
+          <td contenteditable="true" onblur="editEntry(${choreData.length - 15 + index}, 'chore', this.innerText)">${entry.chore}</td>
+          <td contenteditable="true" onblur="editEntry(${choreData.length - 15 + index}, 'points', this.innerText)">${entry.points}</td>
+          <td>${entry.time}</td>
+          <td><button onclick="deleteEntry(${choreData.length - 15 + index})">❌</button></td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      older.forEach((entry, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${entry.kid}</td>
+          <td>${entry.chore}</td>
+          <td>${entry.points}</td>
+          <td>${entry.time}</td>
+        `;
+        historyTbody.appendChild(row);
+      });
+
+      updateChart();
+    }
+
+    function addChore() {
+      const kid = document.getElementById("kid").value;
+      const chore = document.getElementById("chore").value.trim();
+      const points = parseInt(document.getElementById("points").value);
+      const time = new Date().toLocaleString();
+
+      if (!chore || isNaN(points)) {
+        alert("Please enter a valid chore and point value.");
+        return;
+      }
+
+      choreData.push({ kid, chore, points, time });
+      db.ref("chores").set(choreData);
+
+      document.getElementById("chore").value = "";
+      document.getElementById("points").value = "";
+
+      showReward();
+      throwConfetti();
+    }
+
+    function editEntry(index, field, value) {
+      if (field === "points") {
+        const points = parseInt(value);
+        if (!isNaN(points)) {
+          choreData[index][field] = points;
+        }
+      } else {
+        choreData[index][field] = value;
+      }
+      db.ref("chores").set(choreData);
+    }
+
+    function deleteEntry(index) {
+      const entered = prompt("Enter passcode to delete this chore:");
+      const correctPasscode = "0206";
+      if (entered === correctPasscode) {
+        choreData.splice(index, 1);
+        db.ref("chores").set(choreData);
+        alert("Chore deleted.");
+      } else if (entered !== null) {
+        alert("Incorrect passcode. Chore not deleted.");
+      }
+    }
+
+    function resetData() {
+      const entered = prompt("Enter passcode to erase all data:");
+      const correctPasscode = "0206";
+      if (entered === correctPasscode) {
+        if (confirm("Are you sure you want to clear all chore data?")) {
+          choreData = [];
+          db.ref("chores").remove();
+          alert("All data erased.");
+        }
+      } else if (entered !== null) {
+        alert("Incorrect passcode. Data not erased.");
+      }
+    }
+
+    function showReward() {
+      const messages = ["🎉 Great job!", "👏 Nice one!", "🌟 Superstar!", "💪 You rock!"];
+      const reward = document.getElementById("rewardMessage");
+      reward.textContent = messages[Math.floor(Math.random() * messages.length)];
+      setTimeout(() => reward.textContent = "", 2000);
+    }
+
+    function throwConfetti() {
+      for (let i = 0; i < 10; i++) {
+        const c = document.createElement("div");
+        c.className = "confetti";
+        c.style.left = Math.random() * 100 + "vw";
+        c.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 1000);
+      }
+    }
+
+    function updateChart() {
+      const canvas = document.getElementById("choreChart");
+      if (!canvas) return;
+
+      const totals = { Jayden: {}, Gia: {} };
+
+      choreData.forEach(entry => {
+        const day = new Date(entry.time).toLocaleDateString();
+        if (!totals[entry.kid][day]) {
+          totals[entry.kid][day] = 0;
+        }
+        totals[entry.kid][day] += Number(entry.points);
+      });
+
+      const allDates = Array.from(new Set(Object.values(totals).flatMap(t => Object.keys(t))))
+        .sort((a, b) => new Date(a) - new Date(b));
+
+      let jaydenRunningTotal = 0;
+      let giaRunningTotal = 0;
+      const jaydenData = [];
+      const giaData = [];
+
+      allDates.forEach(date => {
+        jaydenRunningTotal += totals.Jayden[date] || 0;
+        giaRunningTotal += totals.Gia[date] || 0;
+        jaydenData.push(jaydenRunningTotal);
+        giaData.push(giaRunningTotal);
+      });
+
+      if (window.choreChartInstance) {
+        choreChartInstance.data.labels = allDates;
+        choreChartInstance.data.datasets[0].data = jaydenData;
+        choreChartInstance.data.datasets[1].data = giaData;
+        choreChartInstance.update();
+      } else {
+        window.choreChartInstance = new Chart(canvas, {
+          type: "line",
+          data: {
+            labels: allDates,
+            datasets: [
+              {
+                label: "Jayden",
+                data: jaydenData,
+                borderColor: "#007acc",
+                fill: false,
+                tension: 0.2
+              },
+              {
+                label: "Gia",
+                data: giaData,
+                borderColor: "#e91e63",
+                fill: false,
+                tension: 0.2
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { precision: 0 }
+              }
+            }
+          }
+        });
+      }
+    }
+
     function toggleHistory() {
       const section = document.getElementById("historySection");
       const toggle = document.getElementById("historyToggle");
@@ -147,7 +360,8 @@
         toggle.textContent = "Show Older Chores";
       }
     }
+
+    window.onload = loadChores;
   </script>
 </body>
 </html>
-
